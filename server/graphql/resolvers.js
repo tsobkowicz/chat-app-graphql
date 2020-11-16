@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 const bcrypt = require('bcryptjs');
-const { UserInputError } = require('apollo-server');
+const jwt = require('jsonwebtoken');
+const { UserInputError, AuthenticationError } = require('apollo-server');
 const { User } = require('../models');
 
 module.exports = {
@@ -11,6 +12,47 @@ module.exports = {
         return users;
       } catch (err) {
         console.log(err);
+      }
+    },
+    login: async (_, { username, password }) => {
+      const errors = {};
+
+      try {
+        if (username.trim() === '') errors.username = 'username must not be empty';
+        if (password.trim() === '') errors.password = 'password must not be empty';
+
+        if (Object.keys(errors).length > 0) {
+          throw new UserInputError('bad input', { errors });
+        }
+
+        const user = await User.findOne({
+          where: { username },
+        });
+
+        if (!user) {
+          errors.username = 'user not found';
+          throw new UserInputError('user not found', { errors });
+        }
+
+        const correctPassword = await bcrypt.compare(password, user.password);
+        if (!correctPassword) {
+          errors.password = 'password is incorrect';
+          throw new AuthenticationError('password is incorrect', { errors });
+        }
+
+        const token = jwt.sign({ username }, process.env.JWT_SECRET, { expiresIn: 60 * 60 });
+
+        user.token = token;
+
+        return {
+          // by default returned object is colled with the function toJSON(), if you want to modify sth in the object, you have to spread the object and call toJSON() by yourself
+          ...user.toJSON(),
+          createdAt: user.createdAt.toISOString(),
+          token,
+        };
+      } catch (err) {
+        console.log(err);
+        throw err;
       }
     },
   },

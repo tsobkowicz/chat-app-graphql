@@ -3,22 +3,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { UserInputError, AuthenticationError } = require('apollo-server');
 const { Op } = require('sequelize');
-const { User } = require('../models');
+const { User } = require('../../models');
 
 module.exports = {
   Query: {
-    getUsers: async (_, __, context) => {
+    getUsers: async (_, __, { user }) => {
       try {
-        let user;
-        if (context.req && context.req.headers.authorization) {
-          const token = context.req.headers.authorization.split('Bearer ')[1];
-          jwt.verify(token, process.env.JWT_SECRET, (err, decodedToken) => {
-            if (err) {
-              throw new AuthenticationError('Unauthenticated');
-            }
-            user = decodedToken;
-          });
-        }
+        if (!user) throw new AuthenticationError('Unathenticated');
         const users = await User.findAll({
           where: { username: { [Op.ne]: user.username } },
         });
@@ -59,7 +50,7 @@ module.exports = {
         user.token = token;
 
         return {
-          // by default returned object is colled with the function toJSON(), if you want to modify sth in the object, you have to spread the object and call toJSON() by yourself
+          // by default returned object is called with the function toJSON(), if you want to modify sth in the object, you have to spread the object and call toJSON() by yourself
           ...user.toJSON(),
           createdAt: user.createdAt.toISOString(),
           token,

@@ -3,16 +3,35 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { UserInputError, AuthenticationError } = require('apollo-server');
 const { Op } = require('sequelize');
-const { User } = require('../../models');
+const { Message, User } = require('../../models');
 
 module.exports = {
   Query: {
     getUsers: async (_, __, { user }) => {
       try {
         if (!user) throw new AuthenticationError('Unathenticated');
-        const users = await User.findAll({
+
+        let users = await User.findAll({
+          // do not show other users emails (it will return null)
+          attributes: ['username', 'imageUrl', 'createdAt'],
           where: { username: { [Op.ne]: user.username } },
         });
+
+        // Insted of sending SQL query for each user via User (parent) resolver, do the following JS filtering to get latest message for each user
+        const allUserMessages = await Message.findAll({
+          where: {
+            [Op.or]: [{ from: user.username }, { to: user.username }],
+          },
+          order: [['createdAt', 'DESC']],
+        });
+        users = users.map((otherUser) => {
+          const latestMessage = allUserMessages.find(
+            (m) => m.from === otherUser.username || m.to === otherUser.username
+          );
+          otherUser.latestMessage = latestMessage;
+          return otherUser;
+        });
+
         return users;
       } catch (err) {
         console.log(err);

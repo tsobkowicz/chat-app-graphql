@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React from 'react';
 import { Row, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
@@ -8,12 +7,13 @@ import { useAuthDispatch } from '../../context/auth';
 import Users from './Users';
 import Messages from './Messages';
 
-export default function Home({ history }) {
+export default function Home() {
   const dispatch = useAuthDispatch();
 
   const logout = () => {
     dispatch({ type: 'LOGOUT' });
-    history.push('/login');
+    // reload the app after logout. Clear the apollo cache
+    window.location.href = '/login';
   };
 
   return (

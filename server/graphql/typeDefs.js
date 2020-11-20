@@ -28,4 +28,8 @@ module.exports = gql`
     register(username: String!, email: String!, password: String!, confirmPassword: String!): User!
     sendMessage(to: String!, content: String!): Message!
   }
+
+  type Subscription {
+    newMessage: Message!
+  }
 `;
